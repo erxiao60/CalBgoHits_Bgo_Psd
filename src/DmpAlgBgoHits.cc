@@ -23,14 +23,17 @@ DmpAlgBgoHits::DmpAlgBgoHits()
   //      fBgoAtt(0),
 	fBgoHits(0),
         fSaveEvtHeader(false),
-        fPsdRaw(0)
+        fPsdRaw(0),
+        fPsdHits(0),
+        fNudRaw(0),
+        fNudHits(0)
 {
         
 }
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoHits::GetDyCoePar(){
-  TFile *fDyPar=new TFile("./DyCoe/DyCoePar.root");
+  TFile *fDyPar=new TFile("./DyCoe/DyCoePar_Reverse.root");
   if(fDyPar==0){
     std::cout<<"Can not open DyCoe Par root file!"<<std::endl;
     return false;
@@ -38,8 +41,22 @@ bool DmpAlgBgoHits::GetDyCoePar(){
   TTree *Dytree=(TTree*)fDyPar->Get("Calibration/Bgo");
   TBranch *b_fBgoDyCoe;
   Dytree->SetBranchAddress("DyCoe",&fBgoDyCoe,&b_fBgoDyCoe);
+  gRootIOSvc->PrepareEvent(0);
+  int begintime=fEvtHeader->GetSecond();
+  if(begintime<58750000){
+  Dytree->GetEntry(2);
+  std::cout<<"~~~~~~~~~~~~~~~~~~~~~~"<<std::endl;
+  std::cout<<"Choose DyPar For PS!"<<std::endl;
+  }
+  else{
   Dytree->GetEntry(0);
+  std::cout<<"~~~~~~~~~~~~~~~~~~~~~~"<<std::endl;
+  std::cout<<"Choose DyPar For SPS!"<<std::endl;
+  }
   //prepare parameters
+  memset(DyCoePar_58,0,sizeof(DyCoePar_58));
+  memset(DyCoePar_25,0,sizeof(DyCoePar_25));
+
   short gid=0,l=0,b=0,s=0;
   short nPmts=(short)fBgoDyCoe->GlobalPMTID.size();
   for(short i=0;i<nPmts; ++i){
@@ -47,35 +64,47 @@ bool DmpAlgBgoHits::GetDyCoePar(){
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=DmpBgoBase::GetSideID(gid);
-    DyCoePar_58[l][b][s][0]=fBgoDyCoe->Slp_Dy8vsDy5[i];
-    DyCoePar_58[l][b][s][1]=fBgoDyCoe->Inc_Dy8vsDy5[i];
-    DyCoePar_25[l][b][s][0]=fBgoDyCoe->Slp_Dy5vsDy2[i];
-    DyCoePar_25[l][b][s][1]=fBgoDyCoe->Inc_Dy5vsDy2[i];
-  //  std::cout<<"Layer:"<<l<<" Bar:"<<b<<" Side:"<<s<<std::endl;
-  //  std::cout<<"***"<<DyCoePar_58[l][b][s][0]<<std::endl;
+    if(fBgoDyCoe->Slp_Dy8vsDy5[i]>0){
+    DyCoePar_58[l][b][s][0]=1/fBgoDyCoe->Slp_Dy8vsDy5[i];
+    DyCoePar_58[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy8vsDy5[i]/fBgoDyCoe->Slp_Dy8vsDy5[i];
+    }
+  //  DyCoePar_58[l][b][s][1]=0;
+    if(fBgoDyCoe->Slp_Dy5vsDy2[i]>0){
+    DyCoePar_25[l][b][s][0]=1/fBgoDyCoe->Slp_Dy5vsDy2[i];
+    DyCoePar_25[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy5vsDy2[i]/fBgoDyCoe->Slp_Dy5vsDy2[i];
+    }
+  //  DyCoePar_25[l][b][s][1]=0;
+
+    
   }
-  long nentries=Dytree->GetEntries();
-  if(nentries==2){
   Dytree->GetEntry(1);
-  short nPmts=(short)fBgoDyCoe->GlobalPMTID.size();
+  nPmts=(short)fBgoDyCoe->GlobalPMTID.size();
   for(short i=0;i<nPmts; ++i){
     gid=fBgoDyCoe->GlobalPMTID[i];
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=DmpBgoBase::GetSideID(gid);
-    if(DyCoePar_58[l][b][s][0]==0){
-    DyCoePar_58[l][b][s][0]=fBgoDyCoe->Slp_Dy8vsDy5[i];
-    DyCoePar_58[l][b][s][1]=fBgoDyCoe->Inc_Dy8vsDy5[i];
+  //if(l%2!=0&&b<10){
+    if(fBgoDyCoe->Slp_Dy8vsDy5[i]>0){
+      DyCoePar_58[l][b][s][0]=1/fBgoDyCoe->Slp_Dy8vsDy5[i];
+      DyCoePar_58[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy8vsDy5[i]/fBgoDyCoe->Slp_Dy8vsDy5[i];
     }
- //   DyCoePar_58[l][b][s][0]=fBgoDyCoe->Slp_Dy8vsDy5[i];
- //   DyCoePar_58[l][b][s][1]=fBgoDyCoe->Inc_Dy8vsDy5[i];
-    DyCoePar_25[l][b][s][0]=fBgoDyCoe->Slp_Dy5vsDy2[i];
-    DyCoePar_25[l][b][s][1]=fBgoDyCoe->Inc_Dy5vsDy2[i];
+ //   }
+    if(fBgoDyCoe->Slp_Dy5vsDy2[i]>0){
+    DyCoePar_25[l][b][s][0]=1/fBgoDyCoe->Slp_Dy5vsDy2[i];
+    DyCoePar_25[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy5vsDy2[i]/fBgoDyCoe->Slp_Dy5vsDy2[i];
+    }
   //  std::cout<<"Layer:"<<l<<" Bar:"<<b<<" Side:"<<s<<std::endl;
   //  std::cout<<"***"<<DyCoePar_58[l][b][s][0]<<std::endl;
   }
-
-
+  for(int l=0;l<14;l++){
+    for(int b=0;b<22;b++){
+      for(int s=0;s<2;s++){
+        std::cout<<"Layer:"<<l<<" Bar:"<<b<<" Side:"<<s;
+        std::cout<<"   "<<DyCoePar_58[l][b][s][0];
+        std::cout<<"   "<<DyCoePar_25[l][b][s][0]<<std::endl;
+      }
+    }
   }
   delete Dytree;
   delete fDyPar;
@@ -102,9 +131,60 @@ bool DmpAlgBgoHits::GetMipsPar(){
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=fBgoMips->BgoSide[i];//s=0,1,2
-    MipsPar[l][b][s][0]=fBgoMips->MPV[i];//using the maximum
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i]/1.077;//using the maximum  /1.077: ratio of cosmic_mips/10GeV Pion_mips
     MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
     MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
+  }
+/*
+Miptree->GetEntry(1);
+  nBars=(short)fBgoMips->GlobalBarID.size();
+  for(short i=0;i<nBars;++i){
+    gid=fBgoMips->GlobalBarID[i];
+    l=DmpBgoBase::GetLayerID(gid);
+    b=DmpBgoBase::GetBarID(gid);
+    s=fBgoMips->BgoSide[i];//s=0,1,2
+    if(l%2==0){
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i]/0.9496;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
+    MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
+    MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
+    }
+  }
+  Miptree->GetEntry(2);
+  nBars=(short)fBgoMips->GlobalBarID.size();
+  for(short i=0;i<nBars;++i){
+    gid=fBgoMips->GlobalBarID[i];
+    l=DmpBgoBase::GetLayerID(gid);
+    b=DmpBgoBase::GetBarID(gid);
+    s=fBgoMips->BgoSide[i];//s=0,1,2
+    if(l%2==1&&l>=10){
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i]/0.9496;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
+    MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
+    MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
+    }
+  }*/
+  //PS and SPS switch
+  //cut with the time 2014-11-12_12-00-00
+  //default is for PS 
+  gRootIOSvc->PrepareEvent(0);
+  int begintime=fEvtHeader->GetSecond();
+  if(begintime<58750000){
+  std::cout<<"*********************"<<std::endl;
+  std::cout<<"Choose MIPs Parameters for PS!"<<std::endl;
+  Mipsenergy=23.6;//10GeV pions for PS
+  }
+  else{
+    for(int il=0;il<14;il++){
+      for(int ib=0;ib<22;ib++){
+        for(int is=0;is<3;is++){
+        MipsPar[il][ib][is][0]=MipsPar[il][ib][is][0]*0.9496;
+        }
+      }
+    }
+
+  Mipsenergy=24.2;//150GeV mion+ for SPS
+  std::cout<<"*********************"<<std::endl;
+  std::cout<<"Choose MIPs Parameters for SPS!"<<std::endl;
+
   }
   delete Miptree;
   delete fMipPar;
@@ -189,13 +269,21 @@ bool DmpAlgBgoHits::Initialize(){
   // read input data
   fEvtHeader =new DmpEvtHeader();
   fEvtHeader = dynamic_cast<DmpEvtHeader*>(gDataBuffer->ReadObject("Event/Cutped/EventHeader"));
+//Bgo
+  fBgoRaw=new DmpEvtBgoRaw();
   fBgoRaw = dynamic_cast<DmpEvtBgoRaw*>(gDataBuffer->ReadObject("Event/Cutped/Bgo"));
   fBgoHits = new DmpEvtBgoHits();
   gDataBuffer->RegisterObject("Event/Cal/Hits",fBgoHits,"DmpEvtBgoHits");
+//Psd
   fPsdRaw=new DmpEvtBgoRaw();      
   gDataBuffer->LinkRootFile("Event/Rdc/Psd",fPsdRaw);
   fPsdHits = new DmpEvtBgoHits();
   gDataBuffer->RegisterObject("Event/Cal/PsdHits",fPsdHits,"DmpEvtBgoHits");
+//Nud
+  fNudRaw=new DmpEvtNudRaw();      
+  gDataBuffer->LinkRootFile("Event/Rdc/Nud",fNudRaw);
+  fNudHits = new DmpEvtNudHits();
+  gDataBuffer->RegisterObject("Event/Cal/NudHits",fNudHits,"DmpEvtNudHits");
   
   if(fSaveEvtHeader){
     gDataBuffer->RegisterObject("Event/Cal/EventHeader",fEvtHeader,"DmpEvtHeader");
@@ -261,7 +349,6 @@ bool DmpAlgBgoHits::Initialize(){
 }
 //-------------------------------------------------------------------
 bool DmpAlgBgoHits::Reset(){
-Position.SetXYZ(0.,0.,0.);
   for(short layer=0;layer<14;++layer ){
     for(short bar=0;bar<24;++bar){ 
       for(short side=0;side<2;++side){
@@ -326,13 +413,13 @@ if(timenow<timecut){return false;}
   
   double computedDy8=adc_dy5[l][b][s]*DyCoePar_58[l][b][s][0]+DyCoePar_58[l][b][s][1];
   double computedDy5=adc_dy2[l][b][s]*DyCoePar_25[l][b][s][0]+DyCoePar_25[l][b][s][1];
-    if(TMath::Abs(computedDy8-adc_dy8[l][b][s])>1500&&computedDy8!=0&&adc_dy5[l][b][s]>50){usingDy8=false;} 
-    if(TMath::Abs(computedDy5-adc_dy5[l][b][s])>1500&&computedDy5!=0&&adc_dy2[l][b][s]>50){usingDy5=false;} 
-    if(d==8&&adc<14000&&usingDy8==true){
+    if(TMath::Abs(computedDy8-adc_dy8[l][b][s])>1550&&computedDy8!=0&&adc_dy5[l][b][s]>60){usingDy8=false;} 
+    if(TMath::Abs(computedDy5-adc_dy5[l][b][s])>1800&&computedDy5!=0&&adc_dy2[l][b][s]>60){usingDy5=false;} 
+    if(d==8&&adc<10000&&usingDy8==true){
       HitsBuffer[l][b][s]=adc/MipsPar[l][b][s][0];
       tag[l][b][s]=d;
     }  
-    else if(d==5&&adc<14000&&tag[l][b][s]!=8&&usingDy5==true){
+    else if(d==5&&adc<10000&&tag[l][b][s]!=8&&usingDy5==true){
       double adc_8=adc*DyCoePar_58[l][b][s][0]+DyCoePar_58[l][b][s][1];
       HitsBuffer[l][b][s]=adc_8/MipsPar[l][b][s][0];
       tag[l][b][s]=d;
@@ -354,16 +441,18 @@ if(timenow<timecut){return false;}
   //    std::cout<<"il"<<il<<"ib"<<ib<<std::endl;
       short gid_bar=DmpBgoBase::ConstructGlobalBarID(il,ib);
       fBgoHits->fGlobalBarID.push_back(gid_bar);
-      fBgoHits->fES0.push_back(HitsBuffer[il][ib][0]*23.6*1.077);
-      fBgoHits->fES1.push_back(HitsBuffer[il][ib][1]*23.6*1.077);
+      fBgoHits->fES0.push_back(HitsBuffer[il][ib][0]*Mipsenergy);
+      fBgoHits->fES1.push_back(HitsBuffer[il][ib][1]*Mipsenergy);
       //  if(TMath::Abs(Hi tsBuffer[il][ib][0]/HitsBuffer[il][ib][1]-1)<0.4){//1-exp(-600/lambda)=0.36; (lambda=1350mm)
           if(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0]<0){
 	DmpLogError<<"Hits0= "<<HitsBuffer[il][ib][0]<<" Hits1= "<<HitsBuffer[il][ib][1]<<" Mip_MPV[0]="<<MipsPar[il][ib][0][0]<<" Mip_MPV[1]"<<MipsPar[il][ib][1][0]<<DmpLogEndl;
 	  }
           double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0])/MipsPar[il][ib][2][0]; 
         //DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" combinedhits:"<<combinedhits<<" ADC"<<" MipsPar:"<<MipsPar[il][ib][2][0]<<DmpLogEndl;
-          fBgoHits->fEnergy.push_back(combinedhits*23.6*1.077);
+          fBgoHits->fEnergy.push_back(combinedhits*Mipsenergy);
 	  double pos=(TMath::Log(HitsBuffer[il][ib][0]/HitsBuffer[il][ib][1])-AttPar[il][ib][1])/AttPar[il][ib][0]*10-300;
+            TVector3 Position;
+            Position.SetXYZ(0.,0.,0.);
 	  if(il%2==0){ 
             Position.SetX(pos);
 	    double yy=DmpBgoBase::Parameter()->BarCenter(gid_bar).y();
@@ -397,6 +486,7 @@ if(timenow<timecut){return false;}
     }
   }
   ProcessPsdHits();
+  ProcessNudHits();
   return true;
 }
 
@@ -428,16 +518,36 @@ bool DmpAlgBgoHits::ProcessPsdHits(){
   for(short il=0;il<2;++il){ 
     for(short ib=0;ib<41;++ib) {
       if(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]>0){
-        short gid_bar=DmpBgoBase::ConstructGlobalBarID(il,ib);
+        short gid_bar=DmpPsdBase::ConstructGlobalStripID(il,ib);
         fPsdHits->fGlobalBarID.push_back(gid_bar);
         fPsdHits->fES0.push_back(HitsBuffer[il][ib][0]*2);
         fPsdHits->fES1.push_back(HitsBuffer[il][ib][1]*2);
         double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]); 
           fPsdHits->fEnergy.push_back(combinedhits*2);
+          TVector3 Position;
+          Position.SetXYZ(0.,0.,0.);
+	  if(il%2==0){ 
+	    double yy=DmpPsdBase::Parameter()->BarCenter(gid_bar).y();
+            Position.SetY(yy);
+	  } 
+	  else{ 
+	    double xx=DmpPsdBase::Parameter()->BarCenter(gid_bar).x();
+            Position.SetX(xx);
+	  }
+	   fPsdHits->fPosition.push_back(Position);//along the BGO bar (mm)
 
       }
     }
   
+  }
+  return true;
+}
+//-------------------------------------------------------------------
+bool DmpAlgBgoHits::ProcessNudHits(){
+  fNudHits->Reset();
+  for(int i=0;i<4;i++){
+    fNudHits->fChannelID.push_back(fNudRaw->fChannelID[i]);
+    fNudHits->fEnergy.push_back(fNudRaw->fADC[i]);
   }
   return true;
 }

@@ -24,7 +24,7 @@ env.ParseConfig("root-config --cflags --libs")
 #-------------------------------------------------------------------
 # include dir. and external libs
 env.Prepend(CPPPATH=['./include'])
-env.Append(LIBS=['DmpEventRaw','DmpEvtBgoMips','DmpEvtBgoDyCoe'])   # link your event module, only for algorithm
+env.Append(LIBS=['DmpEventRaw','DmpEvtBgoMips','DmpEvtBgoDyCoe','DmpEvtNudHits'])   # link your event module, only for algorithm
 
 #-------------------------------------------------------------------
 # main build
