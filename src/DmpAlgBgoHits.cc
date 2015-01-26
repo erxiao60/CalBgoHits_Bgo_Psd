@@ -84,12 +84,12 @@ bool DmpAlgBgoHits::GetDyCoePar(){
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=DmpBgoBase::GetSideID(gid);
-  //if(l%2!=0&&b<10){
+    if(l%2!=0&&b<8){
     if(fBgoDyCoe->Slp_Dy8vsDy5[i]>0){
       DyCoePar_58[l][b][s][0]=1/fBgoDyCoe->Slp_Dy8vsDy5[i];
       DyCoePar_58[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy8vsDy5[i]/fBgoDyCoe->Slp_Dy8vsDy5[i];
     }
- //   }
+    }
     if(fBgoDyCoe->Slp_Dy5vsDy2[i]>0){
     DyCoePar_25[l][b][s][0]=1/fBgoDyCoe->Slp_Dy5vsDy2[i];
     DyCoePar_25[l][b][s][1]=-1*fBgoDyCoe->Inc_Dy5vsDy2[i]/fBgoDyCoe->Slp_Dy5vsDy2[i];
@@ -97,7 +97,7 @@ bool DmpAlgBgoHits::GetDyCoePar(){
   //  std::cout<<"Layer:"<<l<<" Bar:"<<b<<" Side:"<<s<<std::endl;
   //  std::cout<<"***"<<DyCoePar_58[l][b][s][0]<<std::endl;
   }
-  for(int l=0;l<14;l++){
+/*for(int l=0;l<14;l++){
     for(int b=0;b<22;b++){
       for(int s=0;s<2;s++){
         std::cout<<"Layer:"<<l<<" Bar:"<<b<<" Side:"<<s;
@@ -105,7 +105,7 @@ bool DmpAlgBgoHits::GetDyCoePar(){
         std::cout<<"   "<<DyCoePar_25[l][b][s][0]<<std::endl;
       }
     }
-  }
+  }*/
   delete Dytree;
   delete fDyPar;
   //usage: QdcCoe[fGidOrder[gid]];//Quadratic Coefficients
@@ -144,7 +144,7 @@ Miptree->GetEntry(1);
     b=DmpBgoBase::GetBarID(gid);
     s=fBgoMips->BgoSide[i];//s=0,1,2
     if(l%2==0){
-    MipsPar[l][b][s][0]=fBgoMips->MPV[i]/0.9496;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i]*1.052;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
     MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
     MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
     }
@@ -156,12 +156,13 @@ Miptree->GetEntry(1);
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=fBgoMips->BgoSide[i];//s=0,1,2
-    if(l%2==1&&l>=10){
-    MipsPar[l][b][s][0]=fBgoMips->MPV[i]/0.9496;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
+    if(l%2==1&&b>=10){
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i]*1.052;//using the maximum  /0.9496: ratio of 150GeV_Muon/10GeV Pion_mips
     MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
     MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
     }
-  }*/
+  }
+*/
   //PS and SPS switch
   //cut with the time 2014-11-12_12-00-00
   //default is for PS 
@@ -176,7 +177,9 @@ Miptree->GetEntry(1);
     for(int il=0;il<14;il++){
       for(int ib=0;ib<22;ib++){
         for(int is=0;is<3;is++){
-        MipsPar[il][ib][is][0]=MipsPar[il][ib][is][0]*0.9496;
+        MipsPar[il][ib][is][0]=MipsPar[il][ib][is][0]/1.052;
+    //    std::cout<<"Layer:"<<il<<" Bar:"<<ib<<" Side:"<<is;
+    //    std::cout<<"   "<<MipsPar[il][ib][is][0]<<std::endl;
         }
       }
     }
@@ -413,8 +416,8 @@ if(timenow<timecut){return false;}
   
   double computedDy8=adc_dy5[l][b][s]*DyCoePar_58[l][b][s][0]+DyCoePar_58[l][b][s][1];
   double computedDy5=adc_dy2[l][b][s]*DyCoePar_25[l][b][s][0]+DyCoePar_25[l][b][s][1];
-    if(TMath::Abs(computedDy8-adc_dy8[l][b][s])>1550&&computedDy8!=0&&adc_dy5[l][b][s]>60){usingDy8=false;} 
-    if(TMath::Abs(computedDy5-adc_dy5[l][b][s])>1800&&computedDy5!=0&&adc_dy2[l][b][s]>60){usingDy5=false;} 
+    if(TMath::Abs(computedDy8-adc_dy8[l][b][s])>1600&&computedDy8!=0&&adc_dy5[l][b][s]>60){usingDy8=false;} 
+    if(TMath::Abs(computedDy5-adc_dy5[l][b][s])>1600&&computedDy5!=0&&adc_dy2[l][b][s]>60){usingDy5=false;} 
     if(d==8&&adc<10000&&usingDy8==true){
       HitsBuffer[l][b][s]=adc/MipsPar[l][b][s][0];
       tag[l][b][s]=d;
@@ -447,7 +450,8 @@ if(timenow<timecut){return false;}
           if(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0]<0){
 	DmpLogError<<"Hits0= "<<HitsBuffer[il][ib][0]<<" Hits1= "<<HitsBuffer[il][ib][1]<<" Mip_MPV[0]="<<MipsPar[il][ib][0][0]<<" Mip_MPV[1]"<<MipsPar[il][ib][1][0]<<DmpLogEndl;
 	  }
-          double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0])/MipsPar[il][ib][2][0]; 
+      double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0])/MipsPar[il][ib][2][0]; 
+      //  double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]); 
         //DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" combinedhits:"<<combinedhits<<" ADC"<<" MipsPar:"<<MipsPar[il][ib][2][0]<<DmpLogEndl;
           fBgoHits->fEnergy.push_back(combinedhits*Mipsenergy);
 	  double pos=(TMath::Log(HitsBuffer[il][ib][0]/HitsBuffer[il][ib][1])-AttPar[il][ib][1])/AttPar[il][ib][0]*10-300;
